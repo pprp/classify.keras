@@ -12,19 +12,41 @@ from keras.models import Model
 import numpy as np
 from keras.regularizers import l2
 import os
+from math import ceil
 from keras.datasets import cifar10, mnist
 from keras.utils import plot_model
+from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 
-batch_size = 20
-epochs = 10
+train_datagen = ImageDataGenerator(rescale=1./255,
+                                   shear_range=0.2,
+                                   zoom_range=0.2,
+                                   horizontal_flip=True)
+
+test_datagen = ImageDataGenerator(rescale=1./255)
+
+
+batch_size = 12
+epochs = 20
 data_augmentation = True
-num_classes = 10
+num_classes = 6
 
-(train_images, train_labels) , (test_images,test_labels)=cifar10.load_data()
+#(train_images, train_labels) , (test_images,test_labels)=cifar10.load_data()
 
-img_row,img_col,channel = 64,64,1
+train_generator = train_datagen.flow_from_directory('./data/train',
+                                                    target_size=(500,500),
+                                                    batch_size=batch_size,
+                                                    class_mode='categorical')
 
-input_shape = train_images.shape[1:]
+validation_generator = test_datagen.flow_from_directory('./data/validation',
+                                                        target_size=(500,500),
+                                                        batch_size=batch_size,
+                                                        class_mode='categorical')
+
+input_shape = (500,500,3)
+
+# img_row,img_col,channel = 64,64,1
+
+# input_shape = train_images.shape[1:]
 
 # input_shape = (img_row,img_col,1)
 
@@ -32,17 +54,17 @@ input_shape = train_images.shape[1:]
 # train_images = train_images.reshape(train_images.shape[0],img_row,img_col,channel)
 # test_images = test_images.reshape(test_images.shape[0],img_row,img_col,channel)
 
-train_images = train_images.astype("float32")
-test_images = test_images.astype("float32")
+# train_images = train_images.astype("float32")
+# test_images = test_images.astype("float32")
 
 ## 进行归一化处理
-train_images  /= 255
-test_images /= 255
+# train_images  /= 255
+# test_images /= 255
 
 # 将类向量，转化为类矩阵
 # 从 5 转换为 0 0 0 0 1 0 0 0 0 0 矩阵
-train_labels = keras.utils.to_categorical(train_labels,num_classes)
-test_labels = keras.utils.to_categorical(test_labels,num_classes)
+# train_labels = keras.utils.to_categorical(train_labels,num_classes)
+# test_labels = keras.utils.to_categorical(test_labels,num_classes)
 
 
 """
@@ -147,7 +169,7 @@ def resnet_v1(input_shape, depth, num_classes =10):
     model = Model(inputs=inputs, outputs = outputs)
     return model
 
-model = resnet_v1(input_shape=input_shape, depth=20)
+model = resnet_v1(input_shape=input_shape, depth=20 ,num_classes=6)
 
 model.compile(loss=keras.losses.categorical_crossentropy,
                 optimizer=Adam(lr = lr_schedule(0)),
@@ -178,22 +200,22 @@ tb = TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=32,
                 write_graph=True, write_grads=False, 
                 write_images=False, embeddings_freq=0, 
                 embeddings_layer_names=None, 
-                embeddings_metadata=None, 
-                embeddings_data=None, update_freq='epoch')
+                embeddings_metadata=None) 
 
 cbs = [checkpoint, lr_reducer, lr_scheduler, tb]
 
 data_aug = True
 
 if not data_aug: 
-    history = model.fit(train_images,
-            train_labels,
-            batch_size=batch_size,
-            epochs=epochs,
-            verbose=1,
-            validation_data=(test_images,test_labels),
-            shuffle=True
-            )
+    # history = model.fit(train_images,
+    #         train_labels,
+    #         batch_size=batch_size,
+    #         epochs=epochs,
+    #         verbose=1,
+    #         validation_data=(test_images,test_labels),
+    #         shuffle=True
+    #         )
+    pass
 else:
     datagen = ImageDataGenerator(
         # set input mean to 0 over the dataset
@@ -233,27 +255,26 @@ else:
         # set function that will be applied on each input
         preprocessing_function=None,
         # image data format, either "channels_first" or "channels_last"
-        data_format=None,
-        # fraction of images reserved for validation (strictly between 0 and 1)
-        validation_split=0.0)
+        data_format=None)
     
-    datagen.fit(train_images)
+    #datagen.fit(train_images)
 
-    history = model.fit_generator(datagen.flow(train_images[1:10000], train_labels[1:10000], batch_size = batch_size),
-                        validation_data=(test_images[1:1000], test_labels[1:1000]),
-                        epochs=epochs, 
-                        verbose=1, 
+    history = model.fit_generator(train_generator,
+                        validation_data=validation_generator,
+                        epochs = epochs, 
+                        verbose = 1, 
                         workers = 1, 
                         callbacks = cbs,
-                        steps_per_epoch=10000)
+                        steps_per_epoch = 30000,
+                        samples_per_epoch=2000,
+                        validation_steps = 100)
 
-score = model.evaluate(test_images,test_labels,verbose=1)
+#score = model.evaluate(validation_generator,verbose=1)
 
-print('test loss:',score[0])
-print('test accuracy:',score[1])
+# print('test loss:',score[0])
+# print('test accuracy:',score[1])
 
 import matplotlib.pyplot as plt
-
 
 plot_model(model, to_file='model.png')
 
