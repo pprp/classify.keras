@@ -25,8 +25,8 @@ train_datagen = ImageDataGenerator(rescale=1./255,
 test_datagen = ImageDataGenerator(rescale=1./255)
 
 
-batch_size = 12
-epochs = 20
+batch_size = 3
+epochs = 10
 data_augmentation = True
 num_classes = 6
 
@@ -276,7 +276,6 @@ else:
 
 import matplotlib.pyplot as plt
 
-plot_model(model, to_file='model.png')
 
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
@@ -296,3 +295,4 @@ plt.xlabel('Epoch')
 plt.legend(['Train', 'Test'], loc='upper left')
 plt.savefig("trainTestLoss.png")
 #plt.show()
+plot_model(model, to_file='model.png')
