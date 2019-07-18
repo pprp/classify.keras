@@ -26,7 +26,7 @@ test_datagen = ImageDataGenerator(rescale=1./255)
 
 
 batch_size = 3
-epochs = 10
+epochs = 3
 data_augmentation = True
 num_classes = 6
 
