@@ -1,36 +1,58 @@
 import keras
 import tensorflow as tf
 from keras.layers import Conv2D, Lambda, Dense, Flatten
-from keras.layers import Activation, MaxPooling2D, Input
-from keras.layers import BatchNormalization
+from keras.layers import Activation, MaxPooling2D, Input, BatchNormalization
 from keras.optimizers import Adam
-from keras.callbacks import TensorBoard, LearningRateScheduler
-from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint
+from keras.callbacks import TensorBoard, LearningRateScheduler,ReduceLROnPlateau, ModelCheckpoint
 from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model
 import numpy as np
+from PIL import Image
+import matplotlib.pyplot as plt
+import glob
 from keras.regularizers import l2
 import os
 from math import ceil
 from keras.datasets import cifar10, mnist
 from keras.utils import plot_model
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
+from keras.backend.tensorflow_backend import set_session
 
-train_datagen = ImageDataGenerator(rescale=1./255,
-                                   shear_range=0.2,
-                                   zoom_range=0.2,
-                                   horizontal_flip=True)
-
-test_datagen = ImageDataGenerator(rescale=1./255)
-
-
-batch_size = 3
-epochs = 3
+batch_size = 20
+epochs = 150
 data_augmentation = True
 num_classes = 6
 
-#(train_images, train_labels) , (test_images,test_labels)=cifar10.load_data()
+# 使用第二块显卡
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+config = tf.ConfigProto()
+config.gpu_options.allow_growth=True
+config.gpu_options.per_process_gpu_memory_fraction = 0.5
+set_session(tf.Session(config=config))
+
+
+train_datagen = ImageDataGenerator( rescale=1./255,
+                                    shear_range=0.2,
+                                    zoom_range=0.2,
+                                    horizontal_flip=True,
+                                    featurewise_center=False,
+                                    samplewise_center=False,
+                                    featurewise_std_normalization=False,
+                                    samplewise_std_normalization=False,
+                                    zca_whitening=False,
+                                    zca_epsilon=1e-06,
+                                    rotation_range=0,
+                                    width_shift_range=0.1,
+                                    height_shift_range=0.1,
+                                    channel_shift_range=0.,
+                                    fill_mode='nearest',
+                                    cval=0.,
+                                    vertical_flip=False,
+                                    preprocessing_function=None,
+                                    data_format=None)
+
+test_datagen = ImageDataGenerator(rescale=1./255)
 
 train_generator = train_datagen.flow_from_directory('./data/train',
                                                     target_size=(500,500),
@@ -44,42 +66,23 @@ validation_generator = test_datagen.flow_from_directory('./data/validation',
 
 input_shape = (500,500,3)
 
-# img_row,img_col,channel = 64,64,1
+for i in range(9):
+    train_generator.next()
 
-# input_shape = train_images.shape[1:]
-
-# input_shape = (img_row,img_col,1)
-
-#将数据维度进行处理
-# train_images = train_images.reshape(train_images.shape[0],img_row,img_col,channel)
-# test_images = test_images.reshape(test_images.shape[0],img_row,img_col,channel)
-
-# train_images = train_images.astype("float32")
-# test_images = test_images.astype("float32")
-
-## 进行归一化处理
-# train_images  /= 255
-# test_images /= 255
-
-# 将类向量，转化为类矩阵
-# 从 5 转换为 0 0 0 0 1 0 0 0 0 0 矩阵
-# train_labels = keras.utils.to_categorical(train_labels,num_classes)
-# test_labels = keras.utils.to_categorical(test_labels,num_classes)
+# 找到本地生成图，把9张图打印到同一张figure上
+name_list = glob.glob('./data/train/'+'1/*')
+fig = plt.figure()
+for i in range(9):
+    img = Image.open(name_list[i])
+    sub_img = fig.add_subplot(331 + i)
+    sub_img.imshow(img)
+plt.show()
 
 
-"""
-构造网络结构
-"""
+
+
 def lr_schedule(epoch):
-    """Learning Rate Schedule
-    Learning rate is scheduled to be reduced after 80, 120, 160, 180 epochs.
-    Called automatically every epoch as part of callbacks during training.
-    # Arguments
-        epoch (int): The number of epochs
-    # Returns
-        lr (float32): learning rate
-    """
-    lr = 1e-3
+    lr = 1e-4
     if epoch > 180:
         lr *= 0.5e-3
     elif epoch > 160:
@@ -99,19 +102,6 @@ def resnet_layer(inputs,
                  activation='relu',
                  batch_normalization=True,
                  conv_first=True):
-    """2D Convolution-Batch Normalization-Activation stack builder
-    # Arguments
-        inputs (tensor): input tensor from input image or previous layer
-        num_filters (int): Conv2D number of filters
-        kernel_size (int): Conv2D square kernel dimensions
-        strides (int): Conv2D square stride dimensions
-        activation (string): activation name
-        batch_normalization (bool): whether to include batch normalization
-        conv_first (bool): conv-bn-activation (True) or
-            bn-activation-conv (False)
-    # Returns
-        x (tensor): tensor as input to the next layer
-    """
     conv = Conv2D(num_filters,
                   kernel_size=kernel_size,
                   strides=strides,
@@ -172,37 +162,48 @@ def resnet_v1(input_shape, depth, num_classes =10):
 model = resnet_v1(input_shape=input_shape, depth=20 ,num_classes=6)
 
 model.compile(loss=keras.losses.categorical_crossentropy,
-                optimizer=Adam(lr = lr_schedule(0)),
+                optimizer="adam",
                 metrics=['accuracy'])
 
 model.summary()
 
 save_dir = os.path.join(os.getcwd(), 'checkpoint')
-model_name = 'cifar_{epoch:03d}.h5'
+model_name = 'dpj_{epoch:03d}.h5'
 
 if not os.path.isdir(save_dir):
     os.makedirs(save_dir)
 
 filepath = os.path.join(save_dir, model_name)
 
-checkpoint = ModelCheckpoint(filepath = filepath, monitor ='val_acc',
+cpt = ModelCheckpoint(filepath = filepath, 
+                            monitor ='val_acc',
                             verbose = 1,
-                            save_best_only = True)
+                            save_best_only = False)
 
 lr_scheduler = keras.callbacks.LearningRateScheduler(lr_schedule)
 
-lr_reducer = ReduceLROnPlateau(factor = np.sqrt(0.1),
+lr_reducer = ReduceLROnPlateau(monitor = 'val_loss',
+                               factor = np.sqrt(0.1),
                                cooldown=0,
                                patience = 5,
-                               min_lr = 0.5e-6)
+                               min_lr = 0.5e-8)
 
-tb = TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=32, 
+eystp = keras.callbacks.EarlyStopping(monitor='val_loss', 
+                                min_delta=0, patience=0, 
+                                verbose=0, mode='auto') 
+                                #baseline=None, 
+                                #restore_best_weights=False)
+
+
+tb = TensorBoard(log_dir='./logs', histogram_freq=1,
+                #update_freq = 3,
+                batch_size=batch_size, 
                 write_graph=True, write_grads=False, 
-                write_images=False, embeddings_freq=0, 
+                write_images=True, embeddings_freq=0, 
                 embeddings_layer_names=None, 
                 embeddings_metadata=None) 
 
-cbs = [checkpoint, lr_reducer, lr_scheduler, tb]
+cbs = [cpt, lr_reducer, lr_scheduler, tb, eystp]
 
 data_aug = True
 
@@ -275,6 +276,12 @@ else:
 # print('test accuracy:',score[1])
 
 import matplotlib.pyplot as plt
+
+model_json = model.to_json()
+with open("model.json", "w") as json_file:
+    json_file.write(model_json)
+
+model.save_weights("weights.h5")
 
 
 plt.plot(history.history['acc'])
