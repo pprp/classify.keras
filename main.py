@@ -10,25 +10,30 @@ from keras.models import Model
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
-import glob
+import glob,os
 from keras.regularizers import l2
-import os
 from math import ceil
 from keras.datasets import cifar10, mnist
 from keras.utils import plot_model
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 from keras.backend.tensorflow_backend import set_session
+from keras.applications.resnet50 import ResNet50
+import argparse
 
-batch_size = 20
+parser = argparse.ArgumentParser(description = "resume")
+parser.add_argument('--resume', action = 'store_true', default = False, help = 'if resume')
+parser.add_argument('--model-path', type=str, default = "./checkpoint")
+args = parser.parse_args()
+
+batch_size = 8
 epochs = 150
 data_augmentation = True
 num_classes = 6
 
 # 使用第二块显卡
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
-config.gpu_options.per_process_gpu_memory_fraction = 0.5
 set_session(tf.Session(config=config))
 
 
@@ -66,17 +71,17 @@ validation_generator = test_datagen.flow_from_directory('./data/validation',
 
 input_shape = (500,500,3)
 
-for i in range(9):
-    train_generator.next()
+# for i in range(9):
+#     train_generator.next()
 
-# 找到本地生成图，把9张图打印到同一张figure上
-name_list = glob.glob('./data/train/'+'1/*')
-fig = plt.figure()
-for i in range(9):
-    img = Image.open(name_list[i])
-    sub_img = fig.add_subplot(331 + i)
-    sub_img.imshow(img)
-plt.show()
+# # 找到本地生成图，把9张图打印到同一张figure上
+# name_list = glob.glob('./data/train/'+'1/*')
+# fig = plt.figure()
+# for i in range(9):
+#     img = Image.open(name_list[i])
+#     sub_img = fig.add_subplot(331 + i)
+#     sub_img.imshow(img)
+# plt.show()
 
 
 
@@ -159,7 +164,13 @@ def resnet_v1(input_shape, depth, num_classes =10):
     model = Model(inputs=inputs, outputs = outputs)
     return model
 
-model = resnet_v1(input_shape=input_shape, depth=20 ,num_classes=6)
+#model = resnet_v1(input_shape=input_shape, depth=20 ,num_classes=6)
+
+model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+
+if args.resume:
+    tmp_path = args.model_path
+    model = load_model(tmp_path)
 
 model.compile(loss=keras.losses.categorical_crossentropy,
                 optimizer="adam",
@@ -168,7 +179,7 @@ model.compile(loss=keras.losses.categorical_crossentropy,
 model.summary()
 
 save_dir = os.path.join(os.getcwd(), 'checkpoint')
-model_name = 'dpj_{epoch:03d}.h5'
+model_name = 'InceptionResNetV2_{epoch:03d}.h5'
 
 if not os.path.isdir(save_dir):
     os.makedirs(save_dir)
@@ -188,22 +199,21 @@ lr_reducer = ReduceLROnPlateau(monitor = 'val_loss',
                                patience = 5,
                                min_lr = 0.5e-8)
 
-eystp = keras.callbacks.EarlyStopping(monitor='val_loss', 
-                                min_delta=0, patience=0, 
-                                verbose=0, mode='auto') 
-                                #baseline=None, 
-                                #restore_best_weights=False)
+# eystp = keras.callbacks.EarlyStopping(monitor='val_loss', 
+#                                 min_delta=0, patience=0, 
+#                                 verbose=0, mode='auto') 
+#                                 #baseline=None, 
+#                                 #restore_best_weights=False)
 
 
-tb = TensorBoard(log_dir='./logs', histogram_freq=1,
-                #update_freq = 3,
+tb = TensorBoard(log_dir='./logs', histogram_freq=0,
                 batch_size=batch_size, 
                 write_graph=True, write_grads=False, 
-                write_images=True, embeddings_freq=0, 
+                write_images=False, embeddings_freq=0, 
                 embeddings_layer_names=None, 
                 embeddings_metadata=None) 
 
-cbs = [cpt, lr_reducer, lr_scheduler, tb, eystp]
+cbs = [cpt, lr_reducer, lr_scheduler, tb]
 
 data_aug = True
 
