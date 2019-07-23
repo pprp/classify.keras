@@ -6,7 +6,7 @@ from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, LearningRateScheduler,ReduceLROnPlateau, ModelCheckpoint
 from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
-from keras.models import Model
+from keras.models import Model, load_model
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -20,13 +20,16 @@ from keras.backend.tensorflow_backend import set_session
 from keras.applications.resnet50 import ResNet50
 import argparse
 
+
 parser = argparse.ArgumentParser(description = "resume")
 parser.add_argument('--resume', action = 'store_true', default = False, help = 'if resume')
 parser.add_argument('--model-path', type=str, default = "./checkpoint")
+parser.add_argument('--epoch', type=int, default = 100)
+parser.add_argument('--init', type = int, default = 0)
 args = parser.parse_args()
 
-batch_size = 8
-epochs = 150
+batch_size = 14
+epochs = args.epoch
 data_augmentation = True
 num_classes = 6
 
@@ -39,21 +42,21 @@ set_session(tf.Session(config=config))
 
 train_datagen = ImageDataGenerator( rescale=1./255,
                                     shear_range=0.2,
-                                    zoom_range=0.2,
+                                    zoom_range=0.3,
                                     horizontal_flip=True,
                                     featurewise_center=False,
                                     samplewise_center=False,
                                     featurewise_std_normalization=False,
                                     samplewise_std_normalization=False,
-                                    zca_whitening=False,
+                                    zca_whitening=True,
                                     zca_epsilon=1e-06,
-                                    rotation_range=0,
+                                    rotation_range=180,
                                     width_shift_range=0.1,
                                     height_shift_range=0.1,
                                     channel_shift_range=0.,
                                     fill_mode='nearest',
                                     cval=0.,
-                                    vertical_flip=False,
+                                    vertical_flip=True,
                                     preprocessing_function=None,
                                     data_format=None)
 
@@ -166,7 +169,7 @@ def resnet_v1(input_shape, depth, num_classes =10):
 
 #model = resnet_v1(input_shape=input_shape, depth=20 ,num_classes=6)
 
-model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+model = keras.applications.xception.Xception(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
 
 if args.resume:
     tmp_path = args.model_path
@@ -179,7 +182,7 @@ model.compile(loss=keras.losses.categorical_crossentropy,
 model.summary()
 
 save_dir = os.path.join(os.getcwd(), 'checkpoint')
-model_name = 'InceptionResNetV2_{epoch:03d}.h5'
+model_name = 'Xception_{epoch:03d}.h5'
 
 if not os.path.isdir(save_dir):
     os.makedirs(save_dir)
@@ -275,10 +278,12 @@ else:
                         epochs = epochs, 
                         verbose = 1, 
                         workers = 1, 
+                        shuffle = True,
                         callbacks = cbs,
                         steps_per_epoch = 30000,
                         samples_per_epoch=2000,
-                        validation_steps = 100)
+                        validation_steps = 100,
+                        initial_epoch=args.init)
 
 #score = model.evaluate(validation_generator,verbose=1)
 
@@ -292,7 +297,6 @@ with open("model.json", "w") as json_file:
     json_file.write(model_json)
 
 model.save_weights("weights.h5")
-
 
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
@@ -313,3 +317,5 @@ plt.legend(['Train', 'Test'], loc='upper left')
 plt.savefig("trainTestLoss.png")
 #plt.show()
 plot_model(model, to_file='model.png')
+
+del model
