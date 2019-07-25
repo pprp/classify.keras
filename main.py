@@ -24,11 +24,12 @@ import argparse
 parser = argparse.ArgumentParser(description = "resume")
 parser.add_argument('--resume', action = 'store_true', default = False, help = 'if resume')
 parser.add_argument('--model-path', type=str, default = "./checkpoint")
-parser.add_argument('--epoch', type=int, default = 100)
+parser.add_argument('--epoch', type=int, default = 150)
 parser.add_argument('--init', type = int, default = 0)
+parser.add_argument('--bs', type=int, default = 8)
 args = parser.parse_args()
 
-batch_size = 14
+batch_size = args.bs
 epochs = args.epoch
 data_augmentation = True
 num_classes = 6
@@ -85,9 +86,6 @@ input_shape = (500,500,3)
 #     sub_img = fig.add_subplot(331 + i)
 #     sub_img.imshow(img)
 # plt.show()
-
-
-
 
 def lr_schedule(epoch):
     lr = 1e-4
@@ -169,7 +167,11 @@ def resnet_v1(input_shape, depth, num_classes =10):
 
 #model = resnet_v1(input_shape=input_shape, depth=20 ,num_classes=6)
 
-model = keras.applications.xception.Xception(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+model = keras.applications.resnet50.ResNet50(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+modelName = "ResNet50"
+save_dir = os.path.join(os.getcwd(), 'checkpoint')
+model_name = modelName+'_{epoch:03d}.h5'
+
 
 if args.resume:
     tmp_path = args.model_path
@@ -181,8 +183,7 @@ model.compile(loss=keras.losses.categorical_crossentropy,
 
 model.summary()
 
-save_dir = os.path.join(os.getcwd(), 'checkpoint')
-model_name = 'Xception_{epoch:03d}.h5'
+
 
 if not os.path.isdir(save_dir):
     os.makedirs(save_dir)
@@ -192,7 +193,7 @@ filepath = os.path.join(save_dir, model_name)
 cpt = ModelCheckpoint(filepath = filepath, 
                             monitor ='val_acc',
                             verbose = 1,
-                            save_best_only = False)
+                            save_best_only = True)
 
 lr_scheduler = keras.callbacks.LearningRateScheduler(lr_schedule)
 
@@ -220,17 +221,7 @@ cbs = [cpt, lr_reducer, lr_scheduler, tb]
 
 data_aug = True
 
-if not data_aug: 
-    # history = model.fit(train_images,
-    #         train_labels,
-    #         batch_size=batch_size,
-    #         epochs=epochs,
-    #         verbose=1,
-    #         validation_data=(test_images,test_labels),
-    #         shuffle=True
-    #         )
-    pass
-else:
+if True:
     datagen = ImageDataGenerator(
         # set input mean to 0 over the dataset
         featurewise_center=False,
@@ -290,13 +281,12 @@ else:
 # print('test loss:',score[0])
 # print('test accuracy:',score[1])
 
-import matplotlib.pyplot as plt
+# model_json = model.to_json()
+# with open("model.json", "w") as json_file:
+#     json_file.write(model_json)
+# model.save_weights("weights.h5")
 
-model_json = model.to_json()
-with open("model.json", "w") as json_file:
-    json_file.write(model_json)
-
-model.save_weights("weights.h5")
+plt.figure()
 
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
@@ -304,9 +294,9 @@ plt.title('Model accuracy')
 plt.ylabel('Accuracy')
 plt.xlabel('Epoch')
 plt.legend(['Train', 'Test'], loc='upper left')
-plt.savefig("trainTestAcc.png")
-#plt.show()
+plt.savefig(modelName+"trainTestAcc.png")
 
+plt.figure()
 # 绘制训练 & 验证的损失值
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
@@ -314,8 +304,8 @@ plt.title('Model loss')
 plt.ylabel('Loss')
 plt.xlabel('Epoch')
 plt.legend(['Train', 'Test'], loc='upper left')
-plt.savefig("trainTestLoss.png")
-#plt.show()
+plt.savefig(modelName+"trainTestLoss.png")
+
 plot_model(model, to_file='model.png')
 
 del model

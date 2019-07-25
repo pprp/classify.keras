@@ -10,7 +10,7 @@ import json
 file_list = os.listdir('data/test/')
 images = []
  
-modelName = "/home/dongpeijie/classify.keras/checkpoint/cifar_005.h5"
+modelName = "/home/dongpeijie/classify.keras/checkpoint/dpj_005.h5"
 
 # Loading model from h5......
 print("Loading model from h5......")
