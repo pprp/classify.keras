@@ -20,7 +20,6 @@ from keras.backend.tensorflow_backend import set_session
 from keras.applications.resnet50 import ResNet50
 import argparse
 
-
 parser = argparse.ArgumentParser(description = "resume")
 parser.add_argument('--resume', action = 'store_true', default = False, help = 'if resume')
 parser.add_argument('--model-path', type=str, default = "./checkpoint")
@@ -227,8 +226,6 @@ tb = TensorBoard(log_dir='./logs', histogram_freq=0,
                 embeddings_metadata=None) 
 
 cbs = [cpt, lr_reducer, lr_scheduler, tb]
-
-data_aug = True
 
 if True:
     datagen = ImageDataGenerator(
