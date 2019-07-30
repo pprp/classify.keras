@@ -34,7 +34,7 @@ epochs = args.epoch
 data_augmentation = True
 num_classes = 6
 
-# 使用第二块显卡
+# 使用第二块
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
@@ -78,8 +78,7 @@ input_shape = (500,500,3)
 # for i in range(9):
 #     train_generator.next()
 
-# # 找到本地生成图，把9张图打印到同一张figure上
-# name_list = glob.glob('./data/train/'+'1/*')
+# # 找到本地生成图，�?张图打印到同一张figure�?# name_list = glob.glob('./data/train/'+'1/*')
 # fig = plt.figure()
 # for i in range(9):
 #     img = Image.open(name_list[i])
@@ -165,10 +164,20 @@ def resnet_v1(input_shape, depth, num_classes =10):
     model = Model(inputs=inputs, outputs = outputs)
     return model
 
-#model = resnet_v1(input_shape=input_shape, depth=20 ,num_classes=6)
+# model = resnet_v1(input_shape=input_shape, depth=20 ,num_classes=6)
+# keras.applications.xception.Xception(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
 
-model = keras.applications.resnet50.ResNet50(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
-modelName = "ResNet50"
+# model = keras.applications.resnet50.ResNet50(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+
+# model= keras.applications.inception_v3.InceptionV3(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+
+model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+
+# keras.applications.mobilenet.MobileNet(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+
+
+#model = keras.applications.xception.Xception(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+modelName = "InceptionResNetv2"
 save_dir = os.path.join(os.getcwd(), 'checkpoint')
 model_name = modelName+'_{epoch:03d}.h5'
 
@@ -267,7 +276,7 @@ if True:
     history = model.fit_generator(train_generator,
                         validation_data=validation_generator,
                         epochs = epochs, 
-                        verbose = 1, 
+                        verbose = 2, 
                         workers = 1, 
                         shuffle = True,
                         callbacks = cbs,
@@ -294,18 +303,17 @@ plt.title('Model accuracy')
 plt.ylabel('Accuracy')
 plt.xlabel('Epoch')
 plt.legend(['Train', 'Test'], loc='upper left')
-plt.savefig(modelName+"trainTestAcc.png")
+plt.savefig("./logs/pic/"+modelName+"trainTestAcc.png")
 
 plt.figure()
-# 绘制训练 & 验证的损失值
-plt.plot(history.history['loss'])
+# 绘制训练 & 验证的损失�?plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.title('Model loss')
 plt.ylabel('Loss')
 plt.xlabel('Epoch')
 plt.legend(['Train', 'Test'], loc='upper left')
-plt.savefig(modelName+"trainTestLoss.png")
+plt.savefig("./logs/pic/"+modelName+"trainTestLoss.png")
 
-plot_model(model, to_file='model.png')
+plot_model(model, to_file='./logs/pic/'+modelName+'model.png')
 
 del model
