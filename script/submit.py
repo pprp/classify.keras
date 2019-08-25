@@ -17,7 +17,7 @@ set_session(tf.Session(config=config))
 path1 = "./danyi100"
 name1 = "./danyi.json"
 
-file_list = os.listdir(path1)
+file_list1 = os.listdir(path1)
 images = []
  
 model1Name = "./checkpoint/old/dpj/dpj_100.h5"
@@ -35,7 +35,7 @@ model4 = load_model(model4Name)
 model5 = load_model(model5Name)
 
 
-for file in file_list:
+for file in file_list1:
     img = image.load_img(os.path.join(path1, file), target_size=(500, 500))
     img = image.img_to_array(img)
     img = np.expand_dims(img, axis=0)
@@ -44,14 +44,7 @@ for file in file_list:
 x_train = np.array(images, dtype="float") / 255.0
 x = np.concatenate([x for x in x_train])
  
-#预测
-# y1 = model1.predict(x)
-# y2 = model2.predict(x)
-# y3 = model3.predict(x)
-# y4 = model4.predict(x)
-# y5 = model5.predict(x)
 
-# print(y1,y2,y3)
 
 f = open(name1, "w")
 

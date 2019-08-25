@@ -14,8 +14,8 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
 set_session(tf.Session(config=config))
 
-path1 = "./danyi100"
-name1 = "./danyi.json"
+path1 = "./jiandan100"
+name1 = "./jiandan.json"
 
 file_list = os.listdir(path1)
 images = []
@@ -45,11 +45,11 @@ x_train = np.array(images, dtype="float") / 255.0
 x = np.concatenate([x for x in x_train])
  
 #预测
-# y1 = model1.predict(x)
-# y2 = model2.predict(x)
-# y3 = model3.predict(x)
-# y4 = model4.predict(x)
-# y5 = model5.predict(x)
+y1 = model1.predict(x)
+y2 = model2.predict(x)
+y3 = model3.predict(x)
+y4 = model4.predict(x)
+y5 = model5.predict(x)
 
 # print(y1,y2,y3)
 

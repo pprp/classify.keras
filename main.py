@@ -1,5 +1,6 @@
 import keras
 import tensorflow as tf
+from keras import backend as k
 from keras.layers import Conv2D, Lambda, Dense, Flatten
 from keras.layers import Activation, MaxPooling2D, Input, BatchNormalization
 from keras.optimizers import Adam
@@ -20,12 +21,30 @@ from keras.backend.tensorflow_backend import set_session
 from keras.applications.resnet50 import ResNet50
 import argparse
 
+
+def f1(y_true, y_pred):
+    def recall(y_true, y_pred):
+        true_positives = k.sum(k.round(k.clip(y_true * y_pred, 0, 1)))
+        possible_positives = k.sum(k.round(k.clip(y_true, 0, 1)))
+        recall = true_positives / (possible_positives + k.epsilon())
+        return recall
+
+    def precision(y_true, y_pred):
+        true_positives = k.sum(k.round(k.clip(y_true * y_pred, 0, 1)))
+        predicted_positives = k.sum(k.round(k.clip(y_pred, 0, 1)))
+        precision = true_positives / (predicted_positives + k.epsilon())
+        return precision
+
+    precision = precision(y_true, y_pred)
+    recall = recall(y_true, y_pred)
+    return 2 * ((precision * recall) / (precision + recall + k.epsilon()))
+
 parser = argparse.ArgumentParser(description = "resume")
 parser.add_argument('--resume', action = 'store_true', default = False, help = 'if resume')
 parser.add_argument('--model-path', type=str, default = "./checkpoint")
 parser.add_argument('--epoch', type=int, default = 150)
 parser.add_argument('--init', type = int, default = 0)
-parser.add_argument('--bs', type=int, default = 8)
+parser.add_argument('--bs', type=int, default = 2)
 args = parser.parse_args()
 
 batch_size = args.bs
@@ -171,12 +190,11 @@ def resnet_v1(input_shape, depth, num_classes =10):
 # model= keras.applications.inception_v3.InceptionV3(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
 
 model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
-
-# keras.applications.mobilenet.MobileNet(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
+# model = keras.applications.mobilenet.MobileNet(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
 
 
 #model = keras.applications.xception.Xception(include_top=True, weights=None, input_tensor=None, input_shape=input_shape, pooling=None, classes=6)
-modelName = "InceptionResNetv2"
+modelName = "inception_resnet_v2"
 save_dir = os.path.join(os.getcwd(), 'checkpoint')
 model_name = modelName+'_{epoch:03d}.h5'
 
@@ -187,7 +205,7 @@ if args.resume:
 
 model.compile(loss=keras.losses.categorical_crossentropy,
                 optimizer="adam",
-                metrics=['accuracy'])
+                metrics=['accuracy', f1])
 
 model.summary()
 
@@ -226,6 +244,8 @@ tb = TensorBoard(log_dir='./logs', histogram_freq=0,
                 embeddings_metadata=None) 
 
 cbs = [cpt, lr_reducer, lr_scheduler, tb]
+
+data_aug = True
 
 if True:
     datagen = ImageDataGenerator(
